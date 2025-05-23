@@ -135,3 +135,41 @@ window.onload = function(){
 }
 </script>
 ```
+
+Note that the string "`</script>`" has to be split in two in the JavaScript code; otherwise, it is treated as the actual script closing tag, even if it is within a JavaScript string.
+
+## Task 7: Defeating XSS Attacks using CSP
+
+`www.example32a.com`, which has no CSP policy in place, allows all the pieces of JavaScript code to successfully execute, including the one triggered by the button. `www.example32b.com` and `www.example32c.com` both have CSP policies in place, and only code from their specified allowed sources (under `script-src` in the CSP header) is allowed to execute.
+
+In particular, note that CSP by default blocks the inline JavaScript in the `<button>`'s `onclick` attribute as well as in inline `<script>`s; `'self'` is a valid script source referring to the same domain; `'nonce-111-111-111'` is a valid script source allowing scripts with HTML attribute `nonce="111-111-111"`; and wildcards can be used in a script source, as in `*.example70.com`.
+
+Extract of modified Apache configuration to make Areas 5 and 6 display `OK` in `www.example32b.com`:
+
+```conf
+<VirtualHost *:80>
+    DocumentRoot /var/www/csp
+    ServerName www.example32b.com
+    DirectoryIndex index.html
+    Header set Content-Security-Policy " \
+             default-src 'self'; \
+             script-src *.example60.com *.example70.com \
+           "
+</VirtualHost>
+```
+
+Modified PHP code to make Areas 1, 2, 4, 5, 6 display `OK` in `www.example32c.com`:
+
+```php
+<?php
+  $cspheader = "Content-Security-Policy:".
+               "default-src 'self';".
+               "script-src 'self' 'nonce-111-111-111' 'nonce-222-222-222' *.example60.com *.example70.com".
+               "";
+  header($cspheader);
+?>
+
+<?php include 'index.html';?>
+```
+
+CSP can help prevent XSS attacks, because it can be used to block execution of inline JavaScript and code from external sources which are not explicitly trusted, which are the two main ways that XSS attacks inject code to run inside a victim's browser.
